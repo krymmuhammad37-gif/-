@@ -1,0 +1,85 @@
+dart
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:install_plugin/install_plugin.dart';
+
+void main() {
+  runApp(const AppInstaller());
+}
+
+class AppInstaller extends StatelessWidget {
+  const AppInstaller({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'App Installer',
+      home: Scaffold(
+        appBar: AppBar(title: const Text('App Installer')),
+        body: AppInstallerWidget(),
+      ),
+    );
+  }
+}
+
+class AppInstallerWidget extends StatefulWidget {
+  @override
+  _AppInstallerWidgetState createState() => _AppInstallerWidgetState();
+}
+
+class _AppInstallerWidgetState extends State<AppInstallerWidget> {
+  final TextEditingController _controller = TextEditingController();
+  String _status = '';
+
+  Future<void> _installApp() async {
+    final url = _controller.text;
+    final response = await http.get(Uri.parse(url));
+    final bytes = response.bodyBytes;
+
+    final dir = await getApplicationDocumentsDirectory();
+    final filePath = '${dir.path}/app.apk';
+    final file = File(filePath);
+
+    await file.writeAsBytes(bytes);
+    setState(() {
+      _status = 'تم تنزيل التطبيق إلى: $filePath';
+    });
+
+    // تثبيت التطبيق
+    InstallPlugin.installApk(filePath).then((result) {
+      setState(() {
+        _status = result ? 'تم تثبيت التطبيق بنجاح' : 'فشل تثبيت التطبيق';
+      });
+    }).catchError((error) {
+      setState(() {
+        _status = 'حدث خطأ: $error';
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: _controller,
+          decoration: const InputDecoration(labelText: 'أدخل رابط APK'),
+        ),
+        ElevatedButton(
+          onPressed: _installApp,
+          child: const Text('تنزيل وتثبيت'),
+        ),
+        Text(_status),
+      ],
+    );
+  }
+}
+```
+
+### 4. إعداد الأذونات في `AndroidManifest.xml`
+تأكد من إضافة الأذونات اللازمة في ملف `android/app/src/main/AndroidManifest.xml`:
+```xml
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
